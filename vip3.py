@@ -97,23 +97,23 @@ def start(message):
 
     if is_spam(uid): return
     if is_banned(uid):
-        return bot.send_message(uid, "❌ আপনি ব্যানড")
+        return bot.send_message(uid, "❌ আপনি ব্যান হয়েছেন")
 
     handle_referral(uid, message)
 
     m = types.InlineKeyboardMarkup()
 
     for link in CHANNEL_LINKS:
-        m.add(types.InlineKeyboardButton("🔒 প্রাইভেট চ্যানেল জয়েন", url=link))
+        m.add(types.InlineKeyboardButton("📢 চ্যানেল জয়েন করুন", url=link))
 
     m.add(types.InlineKeyboardButton(
-        "📢 পাবলিক চ্যানেল জয়েন",
+        "📣 মেইন চ্যানেল",
         url=f"https://t.me/{PUBLIC_CHANNEL.replace('@','')}"
     ))
 
-    m.add(types.InlineKeyboardButton("✅ Verify", callback_data="verify"))
+    m.add(types.InlineKeyboardButton("✅ ভেরিফাই", callback_data="verify"))
 
-    bot.send_message(uid, "সব চ্যানেল জয়েন করে VERIFY চাপুন", reply_markup=m)
+    bot.send_message(uid, "সব চ্যানেল জয়েন করে ভেরিফাই চাপুন", reply_markup=m)
 
 # ================= VERIFY =================
 @bot.callback_query_handler(func=lambda c: c.data=="verify")
@@ -121,7 +121,7 @@ def verify_user(c):
     uid = c.message.chat.id
 
     if not check_public_join(uid):
-        return bot.answer_callback_query(c.id, "আগে চ্যানেল জয়েন করুন!", show_alert=True)
+        return bot.answer_callback_query(c.id, "❌ আগে চ্যানেল জয়েন করুন!", show_alert=True)
 
     cursor.execute("SELECT * FROM users WHERE user_id=?", (uid,))
     if not cursor.fetchone():
@@ -135,9 +135,9 @@ def main_menu(uid):
     ref_link = f"https://t.me/{BOT_USERNAME}?start={uid}"
 
     m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    m.add("👥 রেফারেল", "📊 স্ট্যাটাস")
-    m.add("📱 APK নিন", "🎓 কোর্স নিন")
-    m.add("📞 এডমিনে যোগাযোগ")
+    m.add("🔗 আমার লিংক", "👥 আমার রেফার")
+    m.add("📱 APK", "🎓 কোর্স")
+    m.add("📞 অ্যাডমিন")
 
     bot.send_message(uid, f"স্বাগতম!\n\nআপনার লিংক:\n{ref_link}", reply_markup=m)
 
@@ -145,15 +145,15 @@ def main_menu(uid):
 @bot.message_handler(commands=['panel'])
 def admin_panel(message):
     if message.chat.id not in ADMINS:
-        return bot.send_message(message.chat.id, "❌ আপনি এডমিন না")
+        return bot.send_message(message.chat.id, "❌ অনুমতি নেই")
 
     m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    m.add("➕ APK Add", "➕ Course Add")
-    m.add("📊 Stats", "🚫 Ban User", "✅ Unban User")
-    m.add("📢 Broadcast")
-    m.add("❌ Exit Admin")
+    m.add("➕ APK যোগ", "➕ কোর্স যোগ")
+    m.add("📊 স্ট্যাটস", "🚫 ব্যান", "✅ আনব্যান")
+    m.add("📢 ব্রডকাস্ট")
+    m.add("🔙 বের হন")
 
-    bot.send_message(message.chat.id, "⚙️ Admin Panel", reply_markup=m)
+    bot.send_message(message.chat.id, "👑 অ্যাডমিন প্যানেল", reply_markup=m)
 
 # ================= USER + ADMIN =================
 @bot.message_handler(func=lambda m: True)
@@ -162,68 +162,65 @@ def buttons(message):
     text = message.text
 
     # USER
-    if text == "👥 রেফারেল":
+    if text == "🔗 আমার লিংক":
         bot.send_message(uid, f"https://t.me/{BOT_USERNAME}?start={uid}")
 
-    elif text == "📊 স্ট্যাটাস":
+    elif text == "👥 আমার রেফার":
         cursor.execute("SELECT referrals FROM users WHERE user_id=?", (uid,))
-        bot.send_message(uid, f"Referral: {cursor.fetchone()[0]}")
+        bot.send_message(uid, f"আপনার রেফার: {cursor.fetchone()[0]}")
 
-    elif text == "📱 APK নিন":
+    elif text == "📱 APK":
         show_apk(uid)
 
-    elif text == "🎓 কোর্স নিন":
+    elif text == "🎓 কোর্স":
         show_course(uid)
 
-    elif text == "📞 এডমিনে যোগাযোগ":
+    elif text == "📞 অ্যাডমিন":
         bot.send_message(uid, "Admin: @jiolinhacker")
 
     # ADMIN
-    elif text == "➕ APK Add" and uid in ADMINS:
-        bot.send_message(uid, "APK file দিন বা লিখুন:\nname | link")
-        bot.register_next_step_handler(message, apk_add)
+    elif text == "➕ APK যোগ" and uid in ADMINS:
+        bot.send_message(uid, "APK ফাইল পাঠান (caption = নাম) অথবা name | link দিন")
 
-    elif text == "➕ Course Add" and uid in ADMINS:
+    elif text == "➕ কোর্স যোগ" and uid in ADMINS:
         bot.send_message(uid, "name | link")
         bot.register_next_step_handler(message, save_course)
 
-    elif text == "📊 Stats" and uid in ADMINS:
+    elif text == "📊 স্ট্যাটস" and uid in ADMINS:
         cursor.execute("SELECT COUNT(*) FROM users")
-        bot.send_message(uid, f"Total Users: {cursor.fetchone()[0]}")
+        bot.send_message(uid, f"মোট ইউজার: {cursor.fetchone()[0]}")
 
-    elif text == "🚫 Ban User" and uid in ADMINS:
+    elif text == "🚫 ব্যান" and uid in ADMINS:
         bot.send_message(uid, "User ID দিন")
         bot.register_next_step_handler(message, ban_user)
 
-    elif text == "✅ Unban User" and uid in ADMINS:
+    elif text == "✅ আনব্যান" and uid in ADMINS:
         bot.send_message(uid, "User ID দিন")
         bot.register_next_step_handler(message, unban_user)
 
-    elif text == "📢 Broadcast" and uid in ADMINS:
-        bot.send_message(uid, "Message দিন")
+    elif text == "📢 ব্রডকাস্ট" and uid in ADMINS:
+        bot.send_message(uid, "মেসেজ পাঠান")
         bot.register_next_step_handler(message, broadcast)
 
-    elif text == "❌ Exit Admin":
+    elif text == "🔙 বের হন":
         main_menu(uid)
 
-# ================= APK ADD =================
-def apk_add(message):
+# ================= APK FILE RECEIVE =================
+@bot.message_handler(content_types=['document'])
+def handle_apk_file(message):
     uid = message.chat.id
 
-    if message.document:
-        cursor.execute("INSERT INTO apk (name,file_id) VALUES (?,?)",
-                       (message.caption, message.document.file_id))
-        conn.commit()
-        bot.send_message(uid, "APK Saved ✅")
-    else:
-        try:
-            name, link = message.text.split("|")
-            cursor.execute("INSERT INTO apk (name,link) VALUES (?,?)",
-                           (name.strip(), link.strip()))
-            conn.commit()
-            bot.send_message(uid, "APK Link Saved ✅")
-        except:
-            bot.send_message(uid, "Wrong format ❌")
+    if uid not in ADMINS:
+        return
+
+    name = message.caption if message.caption else "নাম নেই APK"
+    file_id = message.document.file_id
+
+    cursor.execute("INSERT INTO apk (name,file_id) VALUES (?,?)",
+                   (name, file_id))
+    conn.commit()
+
+    bot.send_message(uid, "✅ APK সেভ হয়েছে")
 
 # ================= COURSE =================
 def save_course(message):
@@ -232,20 +229,20 @@ def save_course(message):
         cursor.execute("INSERT INTO courses (name,link) VALUES (?,?)",
                        (name.strip(), link.strip()))
         conn.commit()
-        bot.send_message(message.chat.id, "Saved ✅")
+        bot.send_message(message.chat.id, "✅ সেভ হয়েছে")
     except:
-        bot.send_message(message.chat.id, "Error ❌")
+        bot.send_message(message.chat.id, "❌ ভুল ফরম্যাট")
 
 # ================= BAN =================
 def ban_user(message):
     cursor.execute("UPDATE users SET banned=1 WHERE user_id=?", (int(message.text),))
     conn.commit()
-    bot.send_message(message.chat.id, "Banned ✅")
+    bot.send_message(message.chat.id, "🚫 ব্যান করা হয়েছে")
 
 def unban_user(message):
     cursor.execute("UPDATE users SET banned=0 WHERE user_id=?", (int(message.text),))
     conn.commit()
-    bot.send_message(message.chat.id, "Unbanned ✅")
+    bot.send_message(message.chat.id, "✅ আনব্যান করা হয়েছে")
 
 # ================= BROADCAST =================
 def broadcast(message):
@@ -255,20 +252,20 @@ def broadcast(message):
             bot.send_message(u[0], message.text)
         except:
             pass
-    bot.send_message(message.chat.id, "Done ✅")
+    bot.send_message(message.chat.id, "✅ পাঠানো শেষ")
 
 # ================= APK =================
 def show_apk(uid):
     cursor.execute("SELECT referrals FROM users WHERE user_id=?", (uid,))
     if cursor.fetchone()[0] < 2:
-        return bot.send_message(uid, "Need 2 referrals ❌")
+        return bot.send_message(uid, "❌ ২টি রেফার লাগবে")
 
     cursor.execute("SELECT id,name FROM apk")
     m = types.InlineKeyboardMarkup()
     for i,n in cursor.fetchall():
         m.add(types.InlineKeyboardButton(n, callback_data=f"apk_{i}"))
 
-    bot.send_message(uid, "Select APK", reply_markup=m)
+    bot.send_message(uid, "APK নির্বাচন করুন", reply_markup=m)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("apk_"))
 def get_apk(c):
@@ -284,14 +281,14 @@ def get_apk(c):
 def show_course(uid):
     cursor.execute("SELECT referrals FROM users WHERE user_id=?", (uid,))
     if cursor.fetchone()[0] < 5:
-        return bot.send_message(uid, "Need 5 referrals ❌")
+        return bot.send_message(uid, "❌ ৫টি রেফার লাগবে")
 
     cursor.execute("SELECT id,name FROM courses")
     m = types.InlineKeyboardMarkup()
     for i,n in cursor.fetchall():
         m.add(types.InlineKeyboardButton(n, callback_data=f"course_{i}"))
 
-    bot.send_message(uid, "Select Course", reply_markup=m)
+    bot.send_message(uid, "কোর্স নির্বাচন করুন", reply_markup=m)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("course_"))
 def get_course(c):
